@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>cw-switch — CodeWhale Config Manager</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #232736;
+    --border: #2d3245;
+    --text: #e4e6ed;
+    --text2: #8b90a5;
+    --accent: #4f8cf7;
+    --accent-hover: #6ba0ff;
+    --danger: #f04a5e;
+    --success: #34d399;
+    --warning: #fbbf24;
+    --dirty: #fbbf2433;
+    --radius: 8px;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    line-height: 1.5;
+    padding: 24px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  @media (max-width: 600px) { body { padding: 12px; } }
+
+  /* ── Header ── */
+  .header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 24px; padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .header .logo { font-size: 28px; }
+  .header h1 { font-size: 20px; font-weight: 600; }
+  .header .sub { color: var(--text2); font-size: 13px; margin-top: -2px; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 13px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .5px; color: var(--text2);
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ── Form ── */
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label {
+    display: block; font-size: 12px; color: var(--text2);
+    margin-bottom: 4px; font-weight: 500;
+  }
+  .field .control {
+    display: flex; gap: 8px; align-items: stretch;
+  }
+  .field .control > *:first-child { flex: 1; }
+
+  select, input, textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: var(--font);
+    width: 100%;
+    outline: none;
+    transition: border-color .15s;
+  }
+  select:focus, input:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+  input::placeholder { color: var(--text2); opacity: .6; }
+
+  .field.dirty select, .field.dirty input:not(.api-input) { border-color: var(--warning); background: var(--dirty); }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 6px;
+    font-size: 13px; font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+    font-family: var(--font);
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-primary:hover { background: var(--accent-hover); color: #fff; }
+  .btn-danger { color: var(--danger); border-color: var(--danger); }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-icon { padding: 8px 10px; }
+
+  /* ── Quick Actions ── */
+  .quick-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .quick-actions .btn { flex: 1; justify-content: center; min-width: 100px; }
+
+  /* ── API Key ── */
+  .key-display { font-family: var(--mono); font-size: 13px; color: var(--text2); padding: 8px 12px; background: var(--surface2); border-radius: 6px; border: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+  .key-display .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .key-display .status-dot.on { background: var(--success); }
+  .key-display .status-dot.off { background: var(--danger); }
+
+  .api-key-modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.6);
+    align-items: center; justify-content: center;
+    z-index: 100;
+  }
+  .api-key-modal-overlay.open { display: flex; }
+  .api-key-modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px;
+    width: 90%; max-width: 420px;
+  }
+  .api-key-modal h3 { margin-bottom: 16px; font-size: 16px; }
+  .api-key-modal .btn-row { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+
+  /* ── Profile ── */
+  .profile-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .profile-row input { flex: 1; min-width: 120px; }
+  .profile-list { margin-top: 10px; }
+  .profile-item {
+    display: flex; align-items: center; gap: 8px; justify-content: space-between;
+    padding: 8px 10px; border-radius: 6px; border: 1px solid var(--border);
+    margin-bottom: 6px; font-size: 13px;
+  }
+  .profile-item:hover { border-color: var(--accent); }
+  .profile-item .name { font-weight: 500; }
+  .profile-item .meta { color: var(--text2); font-size: 12px; }
+  .profile-item .actions { display: flex; gap: 4px; }
+
+  /* ── Advanced (collapsible) ── */
+  .collapsible-header {
+    cursor: pointer; user-select: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .collapsible-header::before {
+    content: '▶'; font-size: 10px; color: var(--text2);
+    transition: transform .15s;
+  }
+  .collapsible-header.open::before { transform: rotate(90deg); }
+  .collapsible-body { display: none; margin-top: 14px; }
+  .collapsible-body.open { display: block; }
+
+  .field-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .field-row .field { flex: 1; min-width: 150px; }
+
+  /* ── Toggle ── */
+  .toggle-wrap { display: flex; align-items: center; gap: 10px; }
+  .toggle {
+    width: 40px; height: 22px; background: var(--border);
+    border-radius: 11px; position: relative; cursor: pointer;
+    transition: background .15s; flex-shrink: 0;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle::after {
+    content: ''; position: absolute;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; top: 2px; left: 2px;
+    transition: transform .15s;
+  }
+  .toggle.on::after { transform: translateX(18px); }
+  .toggle-label { font-size: 13px; }
+
+  /* ── Footer ── */
+  .footer { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  .footer .spacer { flex: 1; }
+  .footer .status-text { font-size: 12px; color: var(--text2); }
+
+  /* ── Toast ── */
+  .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 200; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    padding: 12px 18px; border-radius: var(--radius);
+    font-size: 13px; font-weight: 500;
+    border: 1px solid;
+    animation: slideIn .2s ease-out;
+    max-width: 360px;
+    backdrop-filter: blur(8px);
+  }
+  .toast.success { background: #34d39922; border-color: var(--success); color: var(--success); }
+  .toast.error { background: #f04a5e22; border-color: var(--danger); color: var(--danger); }
+  .toast.info { background: #4f8cf722; border-color: var(--accent); color: var(--accent); }
+  @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* ── Loading ── */
+  .loading { text-align: center; padding: 60px 20px; }
+  .loading .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading p { color: var(--text2); font-size: 14px; }
+
+  /* ── Empty state ── */
+  .empty-state { text-align: center; padding: 40px 20px; }
+  .empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state h3 { font-size: 18px; margin-bottom: 8px; }
+  .empty-state p { color: var(--text2); font-size: 13px; margin-bottom: 16px; }
+
+  /* ── Config dir link ── */
+  .config-path { font-size: 11px; color: var(--text2); font-family: var(--mono); margin-bottom: 12px; word-break: break-all; }
+
+  /* ── Error banner ── */
+  .error-banner {
+    background: #f04a5e11; border: 1px solid var(--danger);
+    border-radius: var(--radius); padding: 12px 16px;
+    margin-bottom: 16px; font-size: 13px;
+    display: none;
+  }
+  .error-banner.show { display: block; }
+  .error-banner .title { font-weight: 600; margin-bottom: 4px; }
+
+  /* ── Range slider ── */
+  input[type="range"] {
+    -webkit-appearance: none; appearance: none;
+    height: 6px; background: var(--border);
+    border-radius: 3px; outline: none; padding: 0;
+    border: none;
+    width: 100%;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--accent); cursor: pointer;
+    border: 2px solid var(--surface);
+  }
+  .range-wrap { display: flex; align-items: center; gap: 12px; }
+  .range-wrap input { flex: 1; }
+  .range-value { font-size: 13px; color: var(--text2); min-width: 60px; text-align: right; font-family: var(--mono); }
+
+  /* ── Custom model input ── */
+  .custom-model-input { margin-top: 8px; display: none; }
+  .custom-model-input.show { display: block; }
+</style>
+</head>
+<body>
+
+  <!-- Toast Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- API Key Modal -->
+  <div class="api-key-modal-overlay" id="apiKeyModal">
+    <div class="api-key-modal">
+      <h3 id="apiKeyModalTitle">编辑 API Key</h3>
+      <div class="field">
+        <label>Provider</label>
+        <input type="text" id="apiKeyModalProvider" readonly style="opacity:.6">
+      </div>
+      <div class="field">
+        <label>API Key</label>
+        <input type="password" id="apiKeyModalInput" placeholder="sk-..." class="api-input">
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="closeApiKeyModal()">取消</button>
+        <button class="btn btn-danger" id="apiKeyDeleteBtn" onclick="deleteApiKey()">删除</button>
+        <button class="btn btn-primary" onclick="saveApiKey()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="app">
+    <div class="header">
+      <span class="logo">🐋</span>
+      <div>
+        <h1>cw-switch</h1>
+        <div class="sub">CodeWhale 配置管理器</div>
+      </div>
+    </div>
+
+    <!-- Error Banner -->
+    <div class="error-banner" id="errorBanner">
+      <div class="title" id="errorTitle"></div>
+      <div id="errorDetail"></div>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading" id="loadingState">
+      <div class="spinner"></div>
+      <p>正在读取 CodeWhale 配置…</p>
+    </div>
+
+    <!-- Main Content (hidden until loaded) -->
+    <div id="mainContent" style="display:none">
+
+      <!-- ═══ Current Config ═══ -->
+      <div class="card">
+        <div class="card-title">⚙ 当前配置</div>
+        <div class="config-path" id="configPath"></div>
+
+        <div class="field" id="providerField">
+          <label>Provider</label>
+          <div class="control">
+            <select id="providerSelect" onchange="onProviderChange()"></select>
+          </div>
+        </div>
+
+        <div class="field" id="modelField">
+          <label>模型</label>
+          <div class="control">
+            <select id="modelSelect" onchange="onFieldChange()"></select>
+          </div>
+          <div class="custom-model-input" id="customModelWrap">
+            <input type="text" id="customModelInput" placeholder="输入模型名称…" oninput="onCustomModelInput()">
+          </div>
+        </div>
+
+        <div class="field" id="reasoningField">
+          <label>推理强度 <span style="color:var(--text2);font-weight:400">(reasoning_effort)</span></label>
+          <div class="range-wrap">
+            <input type="range" id="reasoningSlider" min="0" max="4" step="1" value="3" oninput="onReasoningChange()">
+            <span class="range-value" id="reasoningValue">high</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>API Key</label>
+          <div class="control">
+            <div class="key-display" id="keyDisplay">
+              <span class="status-dot" id="keyStatusDot"></span>
+              <span id="keyDisplayText">—</span>
+            </div>
+            <button class="btn btn-sm" onclick="openApiKeyModal()">管理</button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Base URL</label>
+          <input type="text" id="baseUrlInput" readonly style="opacity:.6;font-family:var(--mono);font-size:12px">
+        </div>
+      </div>
+
+      <!-- ═══ Quick Actions ═══ -->
+      <div class="card">
+        <div class="card-title">⚡ 快捷操作</div>
+        <div class="quick-actions">
+          <button class="btn btn-primary" onclick="quickSwitch('flash')">⚡ 切 Flash</button>
+          <button class="btn" onclick="quickSwitch('pro')">🚀 切 Pro</button>
+          <button class="btn" onclick="quickSwitch('auto')">🎯 自动模式</button>
+          <button class="btn" onclick="launchCW()">▶ 启动 CW</button>
+          <button class="btn" onclick="openConfigDir()">📂 配置文件夹</button>
+        </div>
+      </div>
+
+      <!-- ═══ Profiles ═══ -->
+      <div class="card">
+        <div class="card-title">💾 预设管理</div>
+        <div class="profile-row">
+          <input type="text" id="profileNameInput" placeholder="预设名称 (如: flash-only)">
+          <button class="btn btn-primary btn-sm" onclick="saveProfile()">保存</button>
+          <button class="btn btn-sm" onclick="refreshProfiles()">⟳</button>
+        </div>
+        <div class="profile-list" id="profileList">
+          <div class="empty-state" style="padding:16px">
+            <p style="color:var(--text2);font-size:13px">暂无已保存的预设。配置好设置后保存一个。</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ Advanced Settings ═══ -->
+      <div class="card">
+        <div class="card-title collapsible-header" id="advancedHeader" onclick="toggleAdvanced()">🔧 高级设置</div>
+        <div class="collapsible-body" id="advancedBody">
+          <div class="field-row">
+            <div class="field">
+              <label>Memory</label>
+              <div class="toggle-wrap">
+                <div class="toggle" id="memoryToggle" onclick="toggleMemory()">
+                  <div class="toggle-label" style="display:none"></div>
+                </div>
+                <span class="toggle-label" id="memoryLabel">关闭</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Sandbox 模式</label>
+              <select id="sandboxSelect" onchange="onFieldChange()">
+                <option value="read-only">read-only</option>
+                <option value="workspace-write">workspace-write</option>
+                <option value="danger-full-access">danger-full-access</option>
+              </select>
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Allow Shell</label>
+              <div class="toggle-wrap">
+                <div class="toggle on" id="shellToggle" onclick="toggleShell()"></div>
+                <span class="toggle-label" id="shellLabel">开启</span>
+              </div>
+            </div>
+            <div class="field">
+              <label>Max Subagents</label>
+              <input type="number" id="subagentsInput" min="1" max="20" oninput="onFieldChange()">
+            </div>
+          </div>
+          <div class="field">
+            <label>Approval Policy</label>
+            <select id="approvalSelect" oninput="onFieldChange()">
+              <option value="on-request">on-request</option>
+              <option value="untrusted">untrusted</option>
+              <option value="never">never</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══ Footer ═══ -->
+      <div class="footer">
+        <button class="btn btn-primary" id="applyBtn" onclick="applyChanges()">✕ 应用更改</button>
+        <button class="btn" id="revertBtn" onclick="revertChanges()">↺ 撤销</button>
+        <button class="btn" onclick="loadConfig()">⟳ 刷新</button>
+        <span class="spacer"></span>
+        <span class="status-text" id="statusText">就绪</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────
+const REASONING_LABELS = ['off', 'low', 'medium', 'high', 'max'];
+
+let originalConfig = {};   // snapshot from server
+let workingConfig = {};    // current draft
+let providerInfo = [];     // providers list from server
+let knownProviders = {};   // provider id -> provider object
+
+// ── API Helpers ──────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = { method, headers: {} };
+  if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  const res = await fetch(path, opts);
+  const data = await res.json();
+  if (!res.ok && data.error) throw new Error(data.detail || data.error);
+  return data;
+}
+
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toastContainer');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  container.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transition = 'opacity .3s'; setTimeout(() => el.remove(), 300); }, 3000);
+}
+
+// ── Load Config ──────────────────────────────────────────────────────────
+async function loadConfig() {
+  document.getElementById('loadingState').style.display = 'block';
+  document.getElementById('mainContent').style.display = 'none';
+  document.getElementById('errorBanner').classList.remove('show');
+
+  try {
+    // Fetch providers
+    providerInfo = await api('GET', '/api/providers');
+    knownProviders = {};
+    for (const p of providerInfo) knownProviders[p.id] = p;
+
+    // Fetch status
+    const status = await api('GET', '/api/status');
+
+    // Fetch full config
+    const fullConfig = await api('GET', '/api/config');
+
+    // Handle codewhale not found
+    if (status.error === 'CODEWHALE_NOT_FOUND') {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('mainContent').style.display = 'block';
+      showError('CodeWhale 未安装', '请运行 <code>npm install -g codewhale</code> 安装后重试。');
+      document.getElementById('applyBtn').disabled = true;
+      document.getElementById('providerSelect').disabled = true;
+      document.getElementById('modelSelect').disabled = true;
+      return;
+    }
+
+    // Store config
+    originalConfig = { ...status, ...fullConfig };
+    workingConfig = { ...originalConfig };
+
+    // Populate UI
+    populateProviders(status.provider);
+    populateModels(status.default_text_model);
+    populateReasoning(status.reasoning_effort);
+    populateApiKey(status.api_key_masked, status.has_api_key);
+    document.getElementById('baseUrlInput').value = status.base_url || knownProviders[status.provider]?.defaultBaseUrl || '';
+    document.getElementById('configPath').textContent = `~/.codewhale/config.toml`;
+
+    // Advanced
+    document.getElementById('memoryToggle').classList.toggle('on', status.memory_enabled);
+    document.getElementById('memoryLabel').textContent = status.memory_enabled ? '开启' : '关闭';
+    document.getElementById('sandboxSelect').value = status.sandbox_mode || 'workspace-write';
+    document.getElementById('shellToggle').classList.toggle('on', status.allow_shell !== false);
+    document.getElementById('shellLabel').textContent = status.allow_shell !== false ? '开启' : '关闭';
+    document.getElementById('subagentsInput').value = status.max_subagents || 10;
+    document.getElementById('approvalSelect').value = status.approval_policy || 'on-request';
+
+    // Profiles
+    refreshProfiles();
+
+    // Show UI
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+    document.getElementById('statusText').textContent = '已加载';
+    clearDirty();
+
+  } catch (e) {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('mainContent').style.display = 'block';
+    showError('加载失败', e.message);
+  }
+}
+
+// ── Populate UI ──────────────────────────────────────────────────────────
+function populateProviders(activeProvider) {
+  const sel = document.getElementById('providerSelect');
+  sel.innerHTML = '';
+  for (const p of providerInfo) {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name + ' (' + p.id + ')';
+    if (p.id === activeProvider) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  // If active provider not in list, add it
+  if (activeProvider && !knownProviders[activeProvider]) {
+    const opt = document.createElement('option');
+    opt.value = activeProvider;
+    opt.textContent = activeProvider + ' (未知)';
+    opt.selected = true;
+    sel.insertBefore(opt, sel.firstChild);
+  }
+}
+
+function populateModels(activeModel) {
+  const sel = document.getElementById('modelSelect');
+  const provider = document.getElementById('providerSelect').value;
+  const p = knownProviders[provider];
+  const customWrap = document.getElementById('customModelWrap');
+  const customInput = document.getElementById('customModelInput');
+
+  sel.innerHTML = '';
+  sel.style.display = '';
+
+  if (p && p.models) {
+    if (p.models.length === 1 && p.models[0] === 'CUSTOM') {
+      // Custom model only
+      sel.style.display = 'none';
+      customWrap.classList.add('show');
+      customInput.value = activeModel || '';
+      return;
+    }
+
+    // Check if CUSTOM is an option alongside others
+    const hasCustom = p.models.includes('CUSTOM');
+    const fixedModels = p.models.filter(m => m !== 'CUSTOM');
+
+    for (const model of fixedModels) {
+      const opt = document.createElement('option');
+      opt.value = model;
+      opt.textContent = model;
+      if (model === activeModel) opt.selected = true;
+      sel.appendChild(opt);
+    }
+
+    if (hasCustom) {
+      const opt = document.createElement('option');
+      opt.value = '__CUSTOM__';
+      opt.textContent = '✏ 自定义…';
+      if (!fixedModels.includes(activeModel) && activeModel) {
+        opt.selected = true;
+      }
+      sel.appendChild(opt);
+    }
+
+    // If active model not in list but there are options
+    if (activeModel && !Array.from(sel.options).some(o => o.value === activeModel)) {
+      if (hasCustom) {
+        sel.value = '__CUSTOM__';
+        customWrap.classList.add('show');
+        customInput.value = activeModel;
+      } else if (sel.options.length > 0) {
+        // Select first and update
+      }
+    }
+
+    // Show/hide custom input
+    customWrap.classList.toggle('show', sel.value === '__CUSTOM__');
+    if (sel.value === '__CUSTOM__') {
+      customInput.value = activeModel || '';
+    }
+  } else {
+    // Unknown provider, show text input
+    sel.style.display = 'none';
+    customWrap.classList.add('show');
+    customInput.value = activeModel || '';
+  }
+}
+
+function populateReasoning(value) {
+  const idx = REASONING_LABELS.indexOf(value);
+  const slider = document.getElementById('reasoningSlider');
+  slider.value = idx >= 0 ? idx : 3;
+  document.getElementById('reasoningValue').textContent = value || 'high';
+}
+
+function populateApiKey(masked, hasKey) {
+  const dot = document.getElementById('keyStatusDot');
+  const text = document.getElementById('keyDisplayText');
+  dot.className = 'status-dot ' + (hasKey ? 'on' : 'off');
+  text.textContent = masked || '未配置 API Key';
+}
+
+// ── Event Handlers ───────────────────────────────────────────────────────
+function onProviderChange() {
+  const provider = document.getElementById('providerSelect').value;
+  const p = knownProviders[provider];
+  workingConfig.provider = provider;
+
+  // Update base URL
+  if (p) {
+    document.getElementById('baseUrlInput').value = p.defaultBaseUrl;
+    workingConfig.base_url = p.defaultBaseUrl;
+  }
+
+  // Update model list
+  populateModels(originalConfig.default_text_model);
+
+  // If provider changed, suggest its default model
+  if (p && p.defaultModel) {
+    if (document.getElementById('modelSelect').style.display !== 'none') {
+      const sel = document.getElementById('modelSelect');
+      if (Array.from(sel.options).some(o => o.value === p.defaultModel)) {
+        sel.value = p.defaultModel;
+        workingConfig.default_text_model = p.defaultModel;
+      }
+    }
+  }
+
+  // Check API key status
+  checkApiKeyStatus(provider);
+  markDirty();
+}
+
+function onFieldChange() {
+  markDirty();
+}
+
+function onReasoningChange() {
+  const idx = parseInt(document.getElementById('reasoningSlider').value);
+  const label = REASONING_LABELS[idx];
+  document.getElementById('reasoningValue').textContent = label;
+  workingConfig.reasoning_effort = label;
+  markDirty();
+}
+
+function onCustomModelInput() {
+  workingConfig.default_text_model = document.getElementById('customModelInput').value;
+  markDirty();
+}
+
+async function checkApiKeyStatus(provider) {
+  try {
+    const data = await api('GET', `/api/auth/${provider}`);
+    populateApiKey(data.masked, data.has_key);
+  } catch {}
+}
+
+// ── API Key Modal ────────────────────────────────────────────────────────
+function openApiKeyModal(provider) {
+  const p = provider || document.getElementById('providerSelect').value;
+  document.getElementById('apiKeyModalProvider').value = p;
+  document.getElementById('apiKeyModalTitle').textContent = p === 'deepseek' ? '编辑 API Key (DeepSeek)' : `编辑 API Key (${p})`;
+  document.getElementById('apiKeyModalInput').value = '';
+
+  // Check if key exists
+  api('GET', `/api/auth/${p}`).then(data => {
+    if (data.has_key) {
+      document.getElementById('apiKeyModalInput').placeholder = data.masked + ' (输入新值覆盖)';
+      document.getElementById('apiKeyDeleteBtn').style.display = '';
+    } else {
+      document.getElementById('apiKeyModalInput').placeholder = '输入 API Key…';
+      document.getElementById('apiKeyDeleteBtn').style.display = 'none';
+    }
+  }).catch(() => {
+    document.getElementById('apiKeyDeleteBtn').style.display = 'none';
+  });
+
+  document.getElementById('apiKeyModal').classList.add('open');
+  setTimeout(() => document.getElementById('apiKeyModalInput').focus(), 100);
+}
+
+function closeApiKeyModal() {
+  document.getElementById('apiKeyModal').classList.remove('open');
+}
+
+async function saveApiKey() {
+  const provider = document.getElementById('apiKeyModalProvider').value;
+  const key = document.getElementById('apiKeyModalInput').value.trim();
+  if (!key) { toast('请输入 API Key', 'error'); return; }
+
+  try {
+    await api('POST', `/api/auth/${provider}`, { apiKey: key });
+    toast(`API Key 已保存 (${provider})`, 'success');
+    closeApiKeyModal();
+    // Refresh display
+    const data = await api('GET', `/api/auth/${provider}`);
+    populateApiKey(data.masked, data.has_key);
+  } catch (e) {
+    toast('保存失败: ' + e.message, 'error');
+  }
+}
+
+async function deleteApiKey() {
+  const provider = document.getElementById('apiKeyModalProvider').value;
+  if (!confirm(`确定删除 ${provider} 的 API Key？`)) return;
+
+  try {
+    await api('DELETE', `/api/auth/${provider}`);
+    toast(`API Key 已删除 (${provider})`, 'info');
+    closeApiKeyModal();
+    populateApiKey('未配置 API Key', false);
+  } catch (e) {
+    toast('删除失败: ' + e.message, 'error');
+  }
+}
+
+// ── Quick Actions ────────────────────────────────────────────────────────
+async function quickSwitch(target) {
+  const provider = document.getElementById('providerSelect').value;
+  const isDeepSeek = provider === 'deepseek';
+
+  let model;
+  if (target === 'flash') model = isDeepSeek ? 'deepseek-v4-flash' : (knownProviders[provider]?.models?.find(m => m.includes('flash')) || knownProviders[provider]?.defaultModel);
+  else if (target === 'pro') model = isDeepSeek ? 'deepseek-v4-pro' : knownProviders[provider]?.defaultModel;
+  else model = 'auto';
+
+  if (!model) { toast('当前 provider 没有可用的模型', 'error'); return; }
+
+  try {
+    await api('PUT', '/api/config', { key: target === 'auto' ? 'model_selection_mode' : 'default_text_model', value: model });
+    if (model === 'auto') {
+      toast('已切换到自动模式', 'success');
+    } else {
+      toast(`已切换到 ${model}`, 'success');
+    }
+    workingConfig.default_text_model = model;
+    loadConfig(); // Reload to reflect changes
+  } catch (e) {
+    toast('切换失败: ' + e.message, 'error');
+  }
+}
+
+async function launchCW() {
+  try {
+    await api('POST', '/api/launch');
+    toast('CodeWhale 已启动', 'success');
+  } catch (e) {
+    toast('启动失败: ' + e.message, 'error');
+  }
+}
+
+function openConfigDir() {
+  // Open explorer at config dir
+  const dir = 'C:\\Users\\Martin\\.codewhale';
+  // We can't do this from browser, but we can show path
+  navigator.clipboard.writeText(dir).then(() => {
+    toast('配置路径已复制: ' + dir, 'info');
+  }).catch(() => {
+    toast('配置路径: ' + dir, 'info');
+  });
+}
+
+// ── Memory / Shell Toggles ──────────────────────────────────────────────
+function toggleMemory() {
+  const tog = document.getElementById('memoryToggle');
+  const on = tog.classList.toggle('on');
+  document.getElementById('memoryLabel').textContent = on ? '开启' : '关闭';
+  workingConfig.memory_enabled = on;
+  markDirty();
+}
+
+function toggleShell() {
+  const tog = document.getElementById('shellToggle');
+  const on = tog.classList.toggle('on');
+  document.getElementById('shellLabel').textContent = on ? '开启' : '关闭';
+  workingConfig.allow_shell = on;
+  markDirty();
+}
+
+// ── Advanced ─────────────────────────────────────────────────────────────
+function toggleAdvanced() {
+  document.getElementById('advancedHeader').classList.toggle('open');
+  document.getElementById('advancedBody').classList.toggle('open');
+}
+
+// ── Dirty Tracking ──────────────────────────────────────────────────────
+function markDirty() {
+  document.getElementById('applyBtn').disabled = false;
+  document.getElementById('revertBtn').disabled = false;
+  document.getElementById('statusText').textContent = '有未保存的更改';
+
+  // Highlight changed fields
+  const provider = document.getElementById('providerSelect').value;
+  document.getElementById('providerField').classList.toggle('dirty', provider !== originalConfig.provider);
+  document.getElementById('modelField').classList.toggle('dirty', workingConfig.default_text_model !== originalConfig.default_text_model);
+  document.getElementById('reasoningField').classList.toggle('dirty', workingConfig.reasoning_effort !== originalConfig.reasoning_effort);
+}
+
+function clearDirty() {
+  document.getElementById('applyBtn').disabled = true;
+  document.getElementById('revertBtn').disabled = true;
+  document.getElementById('statusText').textContent = '已保存';
+  document.querySelectorAll('.field.dirty').forEach(el => el.classList.remove('dirty'));
+}
+
+// ── Apply / Revert ──────────────────────────────────────────────────────
+async function applyChanges() {
+  const pairs = [];
+  const provider = document.getElementById('providerSelect').value;
+
+  // Provider
+  if (provider !== originalConfig.provider) {
+    pairs.push({ key: 'provider', value: provider });
+  }
+
+  // Model
+  const modelSel = document.getElementById('modelSelect');
+  let model;
+  if (modelSel.style.display !== 'none') {
+    model = modelSel.value === '__CUSTOM__' ? document.getElementById('customModelInput').value : modelSel.value;
+  } else {
+    model = document.getElementById('customModelInput').value;
+  }
+  if (model && model !== originalConfig.default_text_model) {
+    pairs.push({ key: 'default_text_model', value: model });
+  }
+
+  // Reasoning
+  const reasoning = REASONING_LABELS[parseInt(document.getElementById('reasoningSlider').value)];
+  if (reasoning !== originalConfig.reasoning_effort) {
+    pairs.push({ key: 'reasoning_effort', value: reasoning });
+  }
+
+  // Base URL if changed
+  const baseUrl = document.getElementById('baseUrlInput').value;
+  if (baseUrl && baseUrl !== originalConfig.base_url) {
+    pairs.push({ key: 'base_url', value: baseUrl });
+  }
+
+  // Advanced
+  const sandbox = document.getElementById('sandboxSelect').value;
+  if (sandbox !== (originalConfig.sandbox_mode || 'workspace-write')) {
+    pairs.push({ key: 'sandbox_mode', value: sandbox });
+  }
+
+  const subagents = parseInt(document.getElementById('subagentsInput').value);
+  if (subagents !== (originalConfig.max_subagents || 10)) {
+    pairs.push({ key: 'max_subagents', value: subagents });
+  }
+
+  const approval = document.getElementById('approvalSelect').value;
+  if (approval !== (originalConfig.approval_policy || 'on-request')) {
+    pairs.push({ key: 'approval_policy', value: approval });
+  }
+
+  if (pairs.length === 0) {
+    toast('没有需要保存的更改', 'info');
+    return;
+  }
+
+  document.getElementById('applyBtn').disabled = true;
+  document.getElementById('statusText').textContent = '正在保存…';
+
+  try {
+    const result = await api('POST', '/api/config/batch', pairs);
+    if (result.ok) {
+      toast('配置已更新', 'success');
+      await loadConfig(); // Reload
+    } else {
+      const failed = result.results.filter(r => !r.ok);
+      toast(`${failed.length} 项保存失败`, 'error');
+      console.error('Batch save failures:', failed);
+    }
+  } catch (e) {
+    toast('保存失败: ' + e.message, 'error');
+    document.getElementById('applyBtn').disabled = false;
+    document.getElementById('statusText').textContent = '保存失败';
+  }
+}
+
+function revertChanges() {
+  loadConfig();
+  toast('已撤销更改', 'info');
+}
+
+// ── Profiles ────────────────────────────────────────────────────────────
+async function saveProfile() {
+  const name = document.getElementById('profileNameInput').value.trim();
+  if (!name) { toast('请输入预设名称', 'error'); return; }
+  if (!/^[\w-]+$/.test(name)) { toast('名称只能包含字母、数字、下划线和横线', 'error'); return; }
+
+  try {
+    await api('POST', '/api/profiles', { name, description: '' });
+    toast(`预设 "${name}" 已保存`, 'success');
+    document.getElementById('profileNameInput').value = '';
+    refreshProfiles();
+  } catch (e) {
+    toast('保存失败: ' + e.message, 'error');
+  }
+}
+
+async function loadProfile(name) {
+  try {
+    await api('PUT', `/api/profiles/${name}`);
+    toast(`预设 "${name}" 已加载`, 'success');
+    await loadConfig();
+  } catch (e) {
+    toast('加载失败: ' + e.message, 'error');
+  }
+}
+
+async function deleteProfile(name) {
+  if (!confirm(`删除预设 "${name}"？`)) return;
+  try {
+    await api('DELETE', `/api/profiles/${name}`);
+    toast(`预设 "${name}" 已删除`, 'info');
+    refreshProfiles();
+  } catch (e) {
+    toast('删除失败: ' + e.message, 'error');
+  }
+}
+
+async function refreshProfiles() {
+  const container = document.getElementById('profileList');
+  try {
+    const profiles = await api('GET', '/api/profiles');
+    if (!profiles.length) {
+      container.innerHTML = '<div class="empty-state" style="padding:16px"><p style="color:var(--text2);font-size:13px">暂无已保存的预设。配置好设置后保存一个。</p></div>';
+      return;
+    }
+    container.innerHTML = profiles.map(p => `
+      <div class="profile-item">
+        <div>
+          <div class="name">${p.name}</div>
+          <div class="meta">${p.key_count} 项设置</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-sm btn-primary" onclick="loadProfile('${p.name}')">加载</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteProfile('${p.name}')">删除</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    container.innerHTML = `<div class="empty-state" style="padding:16px"><p style="color:var(--text2);font-size:13px">加载预设失败: ${e.message}</p></div>`;
+  }
+}
+
+// ── Error Display ──────────────────────────────────────────────────────
+function showError(title, detail) {
+  const banner = document.getElementById('errorBanner');
+  banner.classList.add('show');
+  document.getElementById('errorTitle').textContent = title;
+  document.getElementById('errorDetail').innerHTML = detail;
+}
+
+// ── Model select change handler ─────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const modelSel = document.getElementById('modelSelect');
+  modelSel.addEventListener('change', () => {
+    const customWrap = document.getElementById('customModelWrap');
+    if (modelSel.value === '__CUSTOM__') {
+      customWrap.classList.add('show');
+      const customInput = document.getElementById('customModelInput');
+      if (!customInput.value) customInput.value = document.getElementById('providerSelect').value === 'deepseek' ? 'deepseek-v4-flash' : '';
+    } else {
+      customWrap.classList.remove('show');
+      workingConfig.default_text_model = modelSel.value;
+    }
+    markDirty();
+  });
+});
+
+// ── Init ────────────────────────────────────────────────────────────────
+loadConfig();
+</script>
+</body>
+</html>
