@@ -97,29 +97,11 @@ Press `Ctrl+C` to stop the server.
 
 ## 🖼 Screenshots
 
-> TODO — add your own screenshots in `screenshots/` directory
+![Main Interface](screenshots/main-interface.png)
+*Main configuration interface — switch providers, models, API keys at a glance*
 
-```
-┌─ cw-switch ──────────────────────────────┐
-│  🐋 cw-switch — CodeWhale Config Manager │
-├─ ⚙ Current Config ──────────────────────┤
-│  Provider     [deepseek          ▼]     │
-│  Model        [deepseek-v4-pro  ▼]     │
-│  Reasoning    [●━━━━━━━━━━○───] high    │
-│  API Key      sk-9a5c*********a1b  Mgmt │
-│  Base URL     https://api.deepseek.com  │
-├─ ⚡ Quick Actions ───────────────────────┤
-│  [⚡ Flash]  [🚀 Pro]  [▶ Launch CW]    │
-├─ 💾 Profiles ────────────────────────────┤
-│  [name…]           [Save]  [⟳]          │
-│  ┌ lightweight ─────── [Load] [Delete] ┐│
-│  └ 3 settings ─────────────────────────┘│
-├─ 🔧 Advanced ────────────────────────────┤
-│  Memory [●]  Sandbox [workspace-write ▼]│
-├──────────────────────────────────────────┤
-│  [✕ Apply Changes]  [↺ Revert]  [⟳ Ref]│
-└──────────────────────────────────────────┘
-```
+![Flash Model](screenshots/flash-model.png)
+*Switched to Flash model — config applied and ready*
 
 ---
 
