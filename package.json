@@ -1,6 +1,6 @@
 {
   "name": "cw-switch",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "图形化配置工具 for CodeWhale — 一键切换 Provider、模型、API Key",
   "main": "server.js",
   "scripts": {

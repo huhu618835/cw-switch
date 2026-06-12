@@ -252,21 +252,33 @@ app.get('/api/auth/:provider', (req, res) => {
 });
 
 /** POST /api/auth/:provider — set API key */
-app.post('/api/auth/:provider', (req, res) => {
+app.post('/api/auth/:provider', async (req, res) => {
   const { apiKey } = req.body;
   if (!apiKey) return res.status(400).json({ error: 'apiKey is required' });
 
   const secrets = readSecrets();
   secrets.entries[req.params.provider] = apiKey;
   writeSecrets(secrets);
+
+  // Clear stale api_key from config.toml so CodeWhale reads from secrets.json
+  const provider = req.params.provider;
+  try { await cw(['config', 'set', 'api_key', '']); } catch (_) {}
+  try { await cw(['config', 'set', `providers.${provider}.api_key`, '']); } catch (_) {}
+
   res.json({ ok: true });
 });
 
 /** DELETE /api/auth/:provider — remove API key */
-app.delete('/api/auth/:provider', (req, res) => {
+app.delete('/api/auth/:provider', async (req, res) => {
   const secrets = readSecrets();
   delete secrets.entries[req.params.provider];
   writeSecrets(secrets);
+
+  // Also clean up config.toml to prevent stale key conflicts
+  const provider = req.params.provider;
+  try { await cw(['config', 'set', 'api_key', '']); } catch (_) {}
+  try { await cw(['config', 'set', `providers.${provider}.api_key`, '']); } catch (_) {}
+
   res.json({ ok: true });
 });
 
